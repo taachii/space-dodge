@@ -1,0 +1,80 @@
+body { 
+  margin: 0; 
+  overflow: hidden; 
+  background: #000; 
+  color: white; 
+  font-family: 'Arial', sans-serif; 
+}
+#ui-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+  z-index: 100;
+}
+#score {
+  font-size: 24px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: bold;
+  text-shadow: 0 0 10px #00ffff;
+}
+#controls {
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+.control-btn {
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid #00ffff;
+  color: white;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  transition: all 0.2s;
+}
+.control-btn:hover {
+  background: rgba(0, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+#gameOver {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 36px;
+  background: rgba(0, 0, 0, 0.9);
+  padding: 30px 40px;
+  border-radius: 15px;
+  border: 2px solid #ff0000;
+  text-align: center;
+  display: none;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+}
+#gameOver h2 {
+  margin: 0 0 20px 0;
+  color: #ff0000;
+}
+#finalScore {
+  font-size: 24px;
+  margin: 10px 0;
+  color: #00ffff;
+}
+#restartHint {
+  font-size: 18px;
+  margin-top: 20px;
+  color: #aaaaaa;
+}
+audio { display: none; }

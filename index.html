@@ -3,17 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <title>Space Dodge</title>
-  <style>
-    body { margin: 0; overflow: hidden; background: #000; color: white; font-family: sans-serif; }
-    #score { position: absolute; top: 10px; left: 10px; font-size: 18px; }
-    #gameOver { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                font-size: 32px; background: rgba(0, 0, 0, 0.8); padding: 20px; display: none; }
-    audio { display: none; }
-  </style>
+  <link rel="stylesheet" href="./assets/styles.css">
 </head>
 <body>
-  <div id="score">Score: 0</div>
-  <div id="gameOver">💥 GAME OVER<br>Press R to restart</div>
+  <div id="ui-container">
+    <div id="score">SCORE: 0</div>
+    <div id="controls">
+      <div id="muteBtn" class="control-btn" title="Toggle sound">🔊</div>
+      <div id="fullscreenBtn" class="control-btn" title="Fullscreen">⛶</div>
+    </div>
+  </div>
+
+  <div id="gameOver">
+    <h2>💥 GAME OVER</h2>
+    <div id="finalScore">SCORE: 0</div>
+    <div id="restartHint">Press R to restart</div>
+  </div>
 
   <!-- DŹWIĘKI -->
   <audio id="boom" src="assets/sound/explosion.ogg"></audio>
@@ -23,207 +28,6 @@
   <!-- THREE.JS + ZALEŻNOŚCI -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
-
-  <script>
-    // SCENA, KAMERA, RENDERER
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
-
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(0, 2, 5);
-    camera.lookAt(0, 0, 0);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-
-    // ŁADOWANIE MODELU STATKU (GLB)
-    const loader = new THREE.GLTFLoader();
-    let ship = new THREE.Group(); // Tymczasowy kontener
-
-    loader.load(
-      'assets/models/ship.glb',
-      (gltf) => {
-        console.log('Model załadowany pomyślnie');
-        scene.remove(ship);
-        ship = gltf.scene;
-        ship.scale.set(0.5, 0.5, 0.5);
-        
-        // POPRAWIONA ROTACJA:
-        ship.rotation.set(
-          -Math.PI,  
-          0,             
-          Math.PI        
-        );
-        
-        scene.add(ship);
-      },
-      undefined,
-      (error) => {
-        console.error('Błąd ładowania modelu:', error);
-        // Awaryjny statek z poprawioną rotacją
-        const body = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.2, 0.5, 1.5, 16),
-          new THREE.MeshStandardMaterial({ color: 0x00ffcc })
-        );
-        body.rotation.set(-Math.PI / 2, 0, Math.PI);
-        ship.add(body);
-        scene.add(ship);
-      }
-    );
-
-    // OŚWIETLENIE
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-    scene.add(ambientLight);
-
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-    dirLight.position.set(5, 10, 7.5);
-    scene.add(dirLight);
-
-    // DŹWIĘKI
-    const boomSound = document.getElementById("boom");
-    const pingSound = document.getElementById("ping");
-    const backgroundMusic = document.getElementById("backgroundMusic");
-    
-    function initAudio() {
-      backgroundMusic.volume = 0.3;
-      boomSound.volume = 0.7;
-      pingSound.volume = 0.5;
-      
-      document.body.addEventListener('click', () => {
-        backgroundMusic.play().catch(e => console.log("Audio play error:", e));
-      }, { once: true });
-    }
-
-    // ASTEROIDY
-    const asteroids = [];
-    let spawnInterval = 1000;
-    let lastSpawn = 0;
-    const asteroidSpeed = 0.05;
-
-    // STEROWANIE
-    const move = { left: false, right: false, up: false, down: false };
-    document.addEventListener('keydown', e => {
-      if (e.key === 'ArrowLeft' || e.key === 'a') move.left = true;
-      if (e.key === 'ArrowRight' || e.key === 'd') move.right = true;
-      if (e.key === 'ArrowUp' || e.key === 'w') move.up = true;
-      if (e.key === 'ArrowDown' || e.key === 's') move.down = true;
-      if (e.key === 'r') resetGame();
-    });
-
-    document.addEventListener('keyup', e => {
-      if (e.key === 'ArrowLeft' || e.key === 'a') move.left = false;
-      if (e.key === 'ArrowRight' || e.key === 'd') move.right = false;
-      if (e.key === 'ArrowUp' || e.key === 'w') move.up = false;
-      if (e.key === 'ArrowDown' || e.key === 's') move.down = false;
-    });
-
-    // UI
-    const scoreEl = document.getElementById("score");
-    const gameOverEl = document.getElementById("gameOver");
-
-    let gameOver = false;
-    let score = 0;
-    let startTime = Date.now();
-    let lastPingScore = -1;
-
-    // GENEROWANIE ASTEROID
-    function spawnAsteroid() {
-      const geo = new THREE.IcosahedronGeometry(0.5, 0);
-      const mat = new THREE.MeshStandardMaterial({ color: 0x888888 });
-      const a = new THREE.Mesh(geo, mat);
-      a.position.x = (Math.random() - 0.5) * 6;
-      a.position.y = (Math.random() - 0.5) * 6;
-      a.position.z = -10;
-      scene.add(a);
-      asteroids.push(a);
-    }
-
-    // KOLIZJE
-    function checkCollision(obj1, obj2) {
-      const b1 = new THREE.Box3().setFromObject(obj1);
-      const b2 = new THREE.Box3().setFromObject(obj2);
-      return b1.intersectsBox(b2);
-    }
-
-    // RESET GRY
-    function resetGame() {
-      asteroids.forEach(a => scene.remove(a));
-      asteroids.length = 0;
-      ship.position.set(0, 0, 0);
-      gameOver = false;
-      score = 0;
-      startTime = Date.now();
-      lastPingScore = -1;
-      spawnInterval = 1000;
-      gameOverEl.style.display = 'none';
-      
-      backgroundMusic.currentTime = 0;
-      backgroundMusic.play().catch(e => console.log("Music error:", e));
-    }
-
-    // ANIMACJA
-    function animate() {
-      requestAnimationFrame(animate);
-      if (gameOver) return;
-
-      const now = Date.now();
-
-      // STEROWANIE STATKIEM
-      if (move.left && ship.position.x > -3) ship.position.x -= 0.1;
-      if (move.right && ship.position.x < 3) ship.position.x += 0.1;
-      if (move.up && ship.position.y < 3) ship.position.y += 0.1;
-      if (move.down && ship.position.y > -3) ship.position.y -= 0.1;
-
-      // GENEROWANIE ASTEROID
-      if (now - lastSpawn > spawnInterval) {
-        spawnAsteroid();
-        lastSpawn = now;
-        if (spawnInterval > 300) spawnInterval -= 5;
-      }
-
-      // RUCH ASTEROID I KOLIZJE
-      for (let i = asteroids.length - 1; i >= 0; i--) {
-        const a = asteroids[i];
-        a.position.z += asteroidSpeed;
-
-        if (checkCollision(ship, a)) {
-          boomSound.currentTime = 0;
-          boomSound.play();
-          gameOver = true;
-          gameOverEl.style.display = 'block';
-          backgroundMusic.pause();
-        }
-
-        if (a.position.z > 5) {
-          scene.remove(a);
-          asteroids.splice(i, 1);
-        }
-      }
-
-      // PUNKTACJA (zmienione na co 100 punktów)
-      score = Math.floor((now - startTime) / 100);
-      scoreEl.textContent = `Score: ${score}`;
-
-      if (score % 100 === 0 && score > 0 && score !== lastPingScore) {
-        pingSound.currentTime = 0;
-        pingSound.play();
-        lastPingScore = score;
-      }
-
-      renderer.render(scene, camera);
-    }
-
-    // START GRY
-    initAudio();
-    animate();
-
-    // RESPONSYWNOŚĆ
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-  </script>
+  <script src="main.js"></script>
 </body>
 </html>
